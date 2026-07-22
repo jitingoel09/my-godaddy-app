@@ -1,0 +1,48 @@
+{
+  "entities": {
+    "VisitorStats": {
+      "title": "VisitorStats",
+      "description": "Real-time statistics including site visitor counts",
+      "type": "object",
+      "properties": {
+        "count": {
+          "type": "integer",
+          "description": "Total number of unique visitors"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp of the last recorded visit"
+        }
+      },
+      "required": ["count"]
+    },
+    "NewsletterSubscription": {
+      "title": "NewsletterSubscription",
+      "description": "Information about a newsletter subscription",
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string",
+          "description": "User email address"
+        },
+        "subscribedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp of when the user subscribed"
+        }
+      },
+      "required": ["email", "subscribedAt"]
+    }
+  },
+  "firestore": {
+    "/stats/{statsId}": {
+      "schema": "VisitorStats",
+      "description": "General database-wide real-time stats document"
+    },
+    "/newsletterSubscriptions/{subscriptionId}": {
+      "schema": "NewsletterSubscription",
+      "description": "Subscribed newsletter emails stored securely"
+    }
+  }
+}

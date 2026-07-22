@@ -1,0 +1,69 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 1. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Global boundary check functions
+    function isValidId(id) { 
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); 
+    }
+    
+    function incoming() { 
+      return request.resource.data; 
+    }
+    
+    function existing() { 
+      return resource.data; 
+    }
+
+    // Validation helper for stats shape
+    function isValidStats(data) {
+      return data.keys().hasAll(['count'])
+        && data.keys().size() <= 2
+        && data.count is int
+        && data.count >= 0
+        && (!data.keys().hasAny(['updatedAt']) || data.updatedAt is timestamp);
+    }
+
+    match /stats/{statsId} {
+      // Anyone can read statistics
+      allow read: if isValidId(statsId);
+
+      // Allow initialization of stats
+      allow create: if isValidId(statsId)
+        && isValidStats(incoming())
+        && (incoming().count == 1 || incoming().count == 0)
+        && (!incoming().keys().hasAny(['updatedAt']) || incoming().updatedAt == request.time);
+
+      // Allow anyone to increment visitor counter by exactly 1
+      allow update: if isValidId(statsId)
+        && isValidStats(incoming())
+        && incoming().count == existing().count + 1
+        && (!incoming().keys().hasAny(['updatedAt']) || incoming().updatedAt == request.time);
+    }
+
+    // Validation helper for newsletter subscriptions (Pillar 2, 5, 10, 13)
+    function isValidSubscription(data) {
+      return data.keys().hasAll(['email', 'subscribedAt'])
+        && data.keys().size() == 2
+        && data.email is string
+        && data.email.size() >= 5
+        && data.email.size() <= 120
+        && data.subscribedAt is timestamp;
+    }
+
+    match /newsletterSubscriptions/{subscriptionId} {
+      // Anyone can create a subscription securely (Pillar 2, 3, 10, 13)
+      allow create: if isValidId(subscriptionId)
+        && isValidSubscription(incoming())
+        && incoming().subscribedAt == request.time;
+      
+      // Strict PII isolation and Zero-Trust access (Pillar 6)
+      // Reading, updating, or deleting subscription emails is forbidden to prevent scraping
+      allow read, update, delete: if false;
+    }
+  }
+}
